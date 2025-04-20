@@ -4,6 +4,7 @@ set -euo pipefail
 
 # General arguments
 ROOT=$PWD
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 export PUB_MULTI_ADDRS
 export PEER_MULTI_ADDRS
