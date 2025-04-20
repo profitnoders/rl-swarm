@@ -63,8 +63,6 @@ cleanup() {
     exit 0
 }
 
-trap cleanup EXIT
-
 while true; do
     echo -en $GREEN_TEXT
     read -p ">> Would you like to connect to the Testnet? [Y/n] " yn
@@ -78,66 +76,58 @@ while true; do
 done
 
 if [ "$CONNECT_TO_TESTNET" = "True" ]; then
-    # Run modal_login server.
     echo "Please login to create an Ethereum Server Wallet"
     cd modal-login
-    # Check if the yarn command exists; if not, install Yarn.
-    source ~/.bashrc
 
     # Node.js + NVM setup
     if ! command -v node >/dev/null 2>&1; then
-        echo "Node.js not found. Installing NVM and latest Node.js..."
+        echo "Node.js not found. Installing NVM and Node.js..."
         export NVM_DIR="$HOME/.nvm"
-        if [ ! -d "$NVM_DIR" ]; then
-            curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
-        fi
+        curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
         [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
         [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
-       nvm install node
+        nvm install node
     else
         echo "Node.js is already installed: $(node -v)"
     fi
 
-    if ! command -v yarn > /dev/null 2>&1; then
-        # Detect Ubuntu (including WSL Ubuntu) and install Yarn accordingly
+    # Yarn setup
+    if ! command -v yarn >/dev/null 2>&1; then
         if grep -qi "ubuntu" /etc/os-release 2> /dev/null || uname -r | grep -qi "microsoft"; then
-            echo "Detected Ubuntu or WSL Ubuntu. Installing Yarn via apt..."
+            echo "Detected Ubuntu or WSL. Installing Yarn via apt..."
             curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
             echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
             sudo apt update && sudo apt install -y yarn
         else
-            echo "Yarn is not installed. Installing Yarn..."
-            curl -o- -L https://yarnpkg.com/install.sh | sh
+            echo "Installing Yarn manually..."
+            curl -o- -L https://yarnpkg.com/install.sh | bash
             echo 'export PATH="$HOME/.yarn/bin:$HOME/.config/yarn/global/node_modules/.bin:$PATH"' >> ~/.bashrc
-            source ~/.bashrc
         fi
     fi
-    yarn install
-    yarn dev > /dev/null 2>&1 & # Run in background and suppress output
 
-    SERVER_PID=$!  # Store the process ID
+    yarn install
+    yarn dev > /dev/null 2>&1 &
+
+    SERVER_PID=$!
     echo "Started server process: $SERVER_PID"
     sleep 5
-    
-    # Try to open the URL in the default browser
-    if open http://localhost:3000 2>/dev/null; then
-        echo_green ">> Successfully opened http://localhost:3000 in your default browser."
+
+    # Try to open in browser
+    if command -v xdg-open &> /dev/null; then
+        xdg-open http://localhost:3000 || echo ">> Open manually: http://localhost:3000"
     else
-        echo ">> Failed to open http://localhost:3000. Please open it manually."
+        echo ">> Open manually: http://localhost:3000"
     fi
-    
-    cd ..
 
     echo_green ">> Waiting for modal userData.json to be created..."
-    while [ ! -f "modal-login/temp-data/userData.json" ]; do
-        sleep 5  # Wait for 5 seconds before checking again
+    while [ ! -f "temp-data/userData.json" ]; do
+        sleep 5
     done
     echo "Found userData.json. Proceeding..."
 
-    ORG_ID=$(awk 'BEGIN { FS = "\"" } !/^[ \t]*[{}]/ { print $(NF - 1); exit }' modal-login/temp-data/userData.json)
+    ORG_ID=$(awk 'BEGIN { FS = "\"" } !/^[ \t]*[{}]/ { print $(NF - 1); exit }' temp-data/userData.json)
     echo "Your ORG_ID is set to: $ORG_ID"
 
-    # Wait until the API key is activated by the client
     echo "Waiting for API key to become activated..."
     while true; do
         STATUS=$(curl -s "http://localhost:3000/api/get-api-key-status?orgId=$ORG_ID")
@@ -149,6 +139,8 @@ if [ "$CONNECT_TO_TESTNET" = "True" ]; then
             sleep 5
         fi
     done
+
+    cd ..
 fi
 
 pip_install() {
@@ -189,8 +181,6 @@ else
 fi
 
 echo_green ">> Good luck in the swarm!"
-echo_blue ">> Post about rl-swarm on X/twitter! --> https://tinyurl.com/swarmtweet"
-echo_blue ">> And remember to star the repo on GitHub! --> https://github.com/gensyn-ai/rl-swarm"
 
 if [ -n "$ORG_ID" ]; then
     python -m hivemind_exp.gsm8k.train_single_gpu \
