@@ -63,6 +63,8 @@ cleanup() {
     exit 0
 }
 
+trap cleanup EXIT
+
 while true; do
     echo -en $GREEN_TEXT
     read -p ">> Would you like to connect to the Testnet? [Y/n] " yn
