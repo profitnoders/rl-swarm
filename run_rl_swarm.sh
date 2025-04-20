@@ -123,12 +123,12 @@ if [ "$CONNECT_TO_TESTNET" = "True" ]; then
     fi
 
     echo_green ">> Waiting for modal userData.json to be created..."
-    while [ ! -f "temp-data/userData.json" ]; do
+    while [ ! -f "modal-login/temp-data/userData.json" ]; do
         sleep 5
     done
     echo "Found userData.json. Proceeding..."
 
-    ORG_ID=$(awk 'BEGIN { FS = "\"" } !/^[ \t]*[{}]/ { print $(NF - 1); exit }' temp-data/userData.json)
+    ORG_ID=$(awk 'BEGIN { FS = "\"" } !/^[ \t]*[{}]/ { print $(NF - 1); exit }' modal-login/temp-data/userData.json)
     echo "Your ORG_ID is set to: $ORG_ID"
 
     echo "Waiting for API key to become activated..."
